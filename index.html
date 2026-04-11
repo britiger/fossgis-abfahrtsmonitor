@@ -184,10 +184,9 @@
                 let roomClass = '';
                 let tripMessage = [];
 
-                // console.log([new Date(talk.date), new Date()]);
                 if (new Date(talk.date) < new Date()) {
                     // format current 
-                    roomClass = `,blink`;
+                    roomClass = ` blink`;
                 }
                 if (talk.canceled) {
                     tripMessage.push('Zugausfall')
