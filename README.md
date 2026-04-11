@@ -1,7 +1,7 @@
-# C3 Abfahrtsmonitor
+# FOSSGIS Abfahrtsmonitor
 
-CCC Congress live schedule displayed in the classic German train station departure display style.
-
+FOSSGIS live schedule displayed in the classic German train station departure display style.
+Forked from https://github.com/tifa365/c3-abfahrtsmonitor for implement special needs for FOSSGIS.
 <img width="1899" height="823" alt="CleanShot 2026-01-23 at 20 30 31" src="https://github.com/user-attachments/assets/79466644-d8b0-4c1b-979d-7bf29477aa0b" />
 
 ## Usage
@@ -13,6 +13,7 @@ Open `index.html` directly in a browser. No build steps required.
 - `?only-day=<n>` - Show single day (0-indexed)
 - `?only-track=<name>` - Filter by track (e.g., `SCI`, `Security`)
 - `?only-room=<room>` - Filter by room (substring match)
+- `?gen-delay=1` - Generate random delay for talks
 
 Parameters can be combined: `?only-day=1&only-track=SEC`
 
@@ -34,6 +35,13 @@ Uses the classic blue/yellow train station departure board colors:
 - White text on blue for departures
 - Blue text on white for time cells
 
-## Data Source
+## Configuration and Data Sources
 
-Fetches live from: `https://api.events.ccc.de/congress/2025/schedule.json`
+You can configure URLs, rooms and other functions in `config.js`. This configuration can be shared with https://github.com/gislars/fossgis-fahrplan-druck/
+
+| Config value/function | description |
+|-----------------------|-------------|
+| `scheduleUrl`         | URL to current schedule from pretalx, fetch live |
+| `scheduleUrlPrint`    | URL/File of printed schedule to calculate differences |
+| `pretixFreeUrl`       | URL to API for free space in e.g. Workshops |
+| `widgetUrl`           | calculated from `scheduleUrl` or widget URL from pretalx |

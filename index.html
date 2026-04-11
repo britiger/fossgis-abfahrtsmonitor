@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CCC Fahrplan - Bahnhofstafel</title>
+    <title>FOSSGIS Fahrplan - Bahnhofstafel</title>
     <meta name="author" content="Based on c3-fahrplan-druck by Anton P. Braun and Felix Divo">
     <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
 </head>
 
 <body>
@@ -18,11 +19,11 @@
             <span id="currentTime"></span>
         </div>
         <div class="titleBarRight">
-            <span style="font-size: 24px;">&lt;&lt;39C3</span>
+            <span style="font-size: 24px;" id="scheduleVersion"></span>
         </div>
         <div class="titleBarCenter">
             <span class="eventType">Abfahrt</span>
-            <span class="stationName">Chaos Communication Congress</span>
+            <span class="stationName">Heidelberg #FOSSGIS2027</span>
         </div>
         <div class="titleBarClear"></div>
     </div>
@@ -64,46 +65,37 @@
 
     <script>
         (async () => {
-            // Event-specific configuration
-            const scheduleUrl = 'https://api.events.ccc.de/congress/2025/schedule.json';
-            const trackMap = {
-                'Art & Beauty': 'ART',
-                'CCC & Community': 'CCC',
-                'Entertainment': 'FUN',
-                'Ethics, Society & Politics': 'ESP',
-                'Hardware': 'HARD',
-                'Science': 'SCI',
-                'Security': 'SEC',
-                'DJ-Set': 'DJ',
-                'Live Performance': 'LP',
-                null: 'NAT',
-                undefined: 'NAT',
+            const showError = (msg) => {
+                departuresBody.innerHTML = `<tr><td class="cell_time" colspan="4">${msg}</td></tr>`;
             };
 
-            // Room abbreviations
-            const roomAbbrevMap = {
-                'One': '1',
-                'Fuse': 'F',
-                'Ground': 'G',
-                'Zero': 'Z',
-                'SoS Saal 6': '6',
-                'House of Tea': 'HoT',
-                'Chaos Computer Music Club': 'CCMC',
-                'Chill Floor': 'CF',
-                'Komonin': 'KOM'
-            };
-            const roomAbbrevPartial = {
-                'Stonewall IO': 'SIO',
-                'Hardware Hacking Area': 'HHA',
-                'Bits&Bäume': 'B&B',
-                'Sendezentrum': 'SZ'
-            };
+            // Event-specific configuration see config.js
+            const eventCfg = window.FossgisFahrplanEventConfig;
+            if (!eventCfg ||
+                typeof eventCfg.scheduleUrl !== "string" ||
+                typeof eventCfg.widgetScheduleUrl !== "string" ||
+                !eventCfg.trackMap
+            ) {
+                showError("Konfiguration fehlt oder ist ungültig (config.js).");
+            }
+            const {
+                scheduleUrl,
+                scheduleUrlPrint,
+                widgetScheduleUrl,
+                freeSeatsUrl,
+                trackMap,
+                abbreviateRoom,
+                isLightningTalk,
+                needReservation,
+                trainReplaceName,
+            } = eventCfg;
 
             // URL parameter parsing
             const params = new URLSearchParams(location.search);
             const onlyDayParam = params.get('only-day');
             const onlyTrackParam = params.get('only-track');
             const onlyRoomParam = params.get('only-room');
+            const generateDelay = params.get('gen-delay');
             const isSingleDay = onlyDayParam !== null;
             const selectedDay = parseInt(onlyDayParam ?? '1', 10);
 
@@ -111,6 +103,7 @@
             const departuresBody = document.getElementById('departures');
             const currentTimeEl = document.getElementById('currentTime');
             const footerText = document.getElementById('footerText');
+            const scheduleVersion = document.getElementById('scheduleVersion');
 
             // Update clock
             const updateClock = () => {
@@ -123,6 +116,12 @@
             // Filter predicates
             const trackTarget = onlyTrackParam?.toLowerCase();
             const roomTarget = onlyRoomParam?.toLowerCase();
+            const endTalkDate = (date, duration) => {
+                const startDate = new Date(date);
+                const durationMinutes = toMinutes(duration)
+                const debugAddTime = 17*24*60*60000;
+                return new Date(startDate.getTime() + durationMinutes*60000 + debugAddTime);
+            };
             const passesFilters = (talk, roomName) => {
                 if (trackTarget) {
                     const trackRaw = (talk.track || '').toString().toLowerCase();
@@ -130,21 +129,23 @@
                     if (trackRaw !== trackTarget && trackCode !== trackTarget) return false;
                 }
                 if (roomTarget && !roomName.toLowerCase().match(new RegExp(roomTarget))) return false;
-                return true;
-            };
+                if (endTalkDate(talk.date, talk.duration) < new Date()) return false;
 
-            const showError = (msg) => {
-                departuresBody.innerHTML = `<tr><td class="cell_time" colspan="4">${msg}</td></tr>`;
+                return true;
             };
 
             // Fetch schedule data
             let data;
+            let dataOld;
+            let dataSeats;
+            let seats = {};
+
             try {
-                const res = await fetch(scheduleUrl);
-                data = await res.json();
+                const res = await fetch(scheduleUrlPrint);
+                dataOld = await res.json();
             } catch (e) {
-                showError('Daten konnten nicht geladen werden. Bitte Verbindung prüfen.');
-                return;
+                // No old Data ?
+                console.log('Error loading old schedule, maybe not defined.');
             }
 
             const toMinutes = (hhmm) => parseInt(hhmm.slice(0, 2), 10) * 60 + parseInt(hhmm.slice(-2), 10);
@@ -153,20 +154,17 @@
                 const mins = toMinutes(hhmm);
                 return mins < 360 ? mins + (24 * 60) : mins;
             };
-
-            const abbreviateRoom = (roomName) => {
-                if (roomAbbrevMap[roomName]) return roomAbbrevMap[roomName];
-                for (const [key, val] of Object.entries(roomAbbrevPartial)) {
-                    if (roomName.includes(key)) return val;
-                }
-                if (/^SoS (Stage|Lecture|Workshop) /.test(roomName)) return roomName.split(' ').pop();
-                if (roomName.startsWith('Kidspace')) return 'KID';
-                return roomName.substring(0, 4);
+            const isoToHHMM = (isoString) => {
+                if (!isoString) return "";
+                const date = new Date(isoString);
+                const hours = String(date.getHours()).padStart(2, "0");
+                const minutes = String(date.getMinutes()).padStart(2, "0");
+                return `${hours}:${minutes}`;
             };
 
             // Random delay generator (for fun!)
             const getRandomDelay = () => {
-                if (Math.random() > 0.30) return ''; // ~30% chance of delay (every 3rd-4th entry)
+                if (Math.random() > 0.30 || !generateDelay) return ''; // ~30% chance of delay (every 3rd-4th entry)
                 const delays = [5, 10, 15, 20, 25, 30, 45, 60];
                 const delay = delays[Math.floor(Math.random() * delays.length)];
                 return `<span class="tripMessage">ca. ${delay} Minuten später</span>`;
@@ -180,7 +178,58 @@
                 const roomAbbrev = abbreviateRoom(talk.roomName);
                 const duration = toMinutes(talk.duration);
                 const endTime = toHours(toMinutes(talk.start) + duration);
-                const delayMsg = getRandomDelay();
+                let delayMsg = getRandomDelay();
+                let cancelStyle = '';
+                let roomStyle = '';
+                let roomClass = '';
+                let tripMessage = [];
+
+                // console.log([new Date(talk.date), new Date()]);
+                if (new Date(talk.date) < new Date()) {
+                    // format current 
+                    roomClass = `,blink`;
+                }
+                if (talk.canceled) {
+                    tripMessage.push('Zugausfall')
+                    cancelStyle = `text-decoration: line-through; color: red`;
+                }
+                if(talk.isBreak) {
+                    tripMessage.push('Betriebsunterbrechung');
+                }
+                if (talk.newtalk && !isLightningTalk(talk) && !talk.isBreak) {
+                    tripMessage.push(trainReplaceName(talk));
+                }
+                if(isLightningTalk(talk)) {
+                    tripMessage.push('Kurzzug');
+                }
+                if (talk.newroom) {
+                    tripMessage.push('Gleiswechsel');
+                    roomStyle = `${roomStyle};color: #FFFF00`;
+                }
+                if(needReservation(talk)) {
+                    tripMessage.push('Reservierungspflichtig');
+
+                    if (seats[talk.code]) {
+                        if (seats[talk.code].status == 'open') {
+                            // free seats
+                            if(seats[talk.code].availability.kind == 'unlimited') {
+                                tripMessage.push(`Geringe Auslastung`);
+                            }else{
+                                tripMessage.push(`Hohe Auslastung, ${seats[talk.code].availability.free} Plätze frei`);
+                            }
+                        } else {
+                            // closes / sold out
+                            tripMessage.push('Zug ist ausgebucht');
+                        }
+                    } else {
+                        // No seat information
+                        tripMessage.push('Unbekannte Auslastung');
+                    }
+                }
+
+                if (tripMessage.length > 0) {
+                    delayMsg = `<span class="tripMessage">${tripMessage.join(' | ')}</span>`;
+                }
 
                 return `
                 <tr>
@@ -189,7 +238,7 @@
                         <span class="tripID">${trackCode} ${trainId}</span>
                     </td>
                     <td>
-                        <span class="to_from"><a href="${talk.url}" target="_blank">${talk.title}</a></span>
+                        <span class="to_from" style="${cancelStyle}"><a href="${talk.url}" target="_blank">${talk.title}</a></span>
                         ${delayMsg}
                     </td>
                     <td>
@@ -197,7 +246,7 @@
                         <span class="tripMessage">${talk.roomName} | bis ${endTime}</span>
                     </td>
                     <td>
-                        <span class="platform">${roomAbbrev}</span>
+                        <span class="platform${roomClass}" style="${roomStyle}">${roomAbbrev}</span>
                     </td>
                 </tr>`;
             };
@@ -217,87 +266,210 @@
             // Collect and sort talks
             const collectAndSortTalks = (days, includeDay = true) => {
                 const talks = [];
+                const talkids = [];
+                const oldtalks = {};
+                // Add current Talks
                 days.forEach((day) => {
                     Object.entries(day.rooms).forEach(([roomName, roomTalks]) => {
                         roomTalks.forEach((talk) => {
                             if (passesFilters(talk, roomName)) {
                                 talks.push({ ...talk, dayIndex: day.index, dayDate: day.date, roomName });
+                                talkids.push(talk.id);
                             }
                         });
                     });
+                });
+                // add Breaks
+                if(dataWidget) {
+                    dataWidget.talks.forEach((talk) => {
+                        if (talk.slot_type && talk.slot_type == 'break') {
+                            // only breaks, no talks from widget schedule
+                            // set missing values im schedule format
+                            const startDate = new Date(talk.start);
+                            const startTime = isoToHHMM(talk.start);
+                            const endDate = new Date(talk.end);
+                            const breakDate = startDate.toISOString().split("T")[0];
+                            const day = days.find((d) => d.date === breakDate);
+                            if(day) {
+                                talk.dayIndex = day.index;
+                                talk.dayDate = day.date;
+                                talk.id = `${day.index}${startTime.replace(':','')}`;
+                            }
+                            if (typeof talk.title === "object") {
+                                title =
+                                talk.title["de-formal"] ||
+                                talk.title.de ||
+                                talk.title.en ||
+                                "";
+                            } else if (typeof talk.title === "string") {
+                                title = talk.title;
+                            }
+                            if (!title) return;
+
+                            talk.title = title;
+                             
+                            talk.duration = toHours(Math.floor((endDate - startDate) / 60000));
+                            talk.date = startDate.toLocaleString('sv').replace(' ','T') + '+01:00';
+                            talk.start = startDate.toLocaleTimeString('de-DE').substring(0,5);
+                            talk.roomName = '';
+                            talk.track = 'Break';
+                            talk.isBreak = true;
+
+                            // check already in list
+                            const findSame = talks.find((t) => t.date == talk.date );
+                            if(findSame || !passesFilters(talk, '')) return;
+
+                            talks.push(talk);
+                        }
+                    });
+                }
+                // Check canceled Talks + Changes
+                if(dataOld) {
+                    const daysOld = dataOld.schedule.conference.days;
+                    daysOld.forEach((day) => {
+                        Object.entries(day.rooms).forEach(([roomName, roomTalks]) => {
+                            roomTalks.forEach((talk) => {
+                                oldtalks[talk.id] = { room: talk.room }
+                                if (passesFilters(talk, roomName) && !talkids.includes(talk.id)) {
+                                    // Found canceled talk in old schedule
+                                    talks.push({ ...talk, dayIndex: day.index, dayDate: day.date, canceled: true, roomName });
+                                }
+                            });
+                        });
+                    });
+                }
+                // Load free seats
+                if(dataSeats) {
+                    dataSeats.groups.forEach((grp) => {
+                            grp.entries.forEach((entry) => {
+                                if(entry.pretalxCode) {
+                                    seats[entry.pretalxCode] = entry;
+                                }
+                            });
+                        }
+                    );
+                }
+                // find changes
+                talks.forEach((talk) => {
+                    if (oldtalks[talk.id] == undefined) {
+                        talk['newtalk'] = true;
+                    } else if (oldtalks[talk.id].room != talk.room) {
+                        talk['newroom'] = true;
+                    }
                 });
                 talks.sort((a, b) => {
                     if (includeDay && a.dayIndex !== b.dayIndex) return a.dayIndex - b.dayIndex;
                     const aTime = timeForSort(a.start);
                     const bTime = timeForSort(b.start);
                     if (aTime !== bTime) return aTime - bTime;
+                    // ToDo Canceled vs. Replace
                     return a.roomName.localeCompare(b.roomName);
                 });
                 return talks;
             };
 
-            // Render schedule
-            const days = data.schedule.conference.days;
-            let targetDays = days;
-
-            if (isSingleDay) {
-                const dayObj = days.find((d) => d.index === selectedDay);
-                if (!dayObj) {
-                    showError(`Keine Inhalte für Tag ${selectedDay} gefunden.`);
+            // Update Schedule
+            const updateSchedule = async () => {
+                // Fetch current Schedule
+                try {
+                    var res = await fetch(scheduleUrl);
+                    data = await res.json();
+                } catch (e) {
+                    if (departuresBody.innerHTML.length < 500) {
+                        // Show Fetch error only if not loaded before
+                        console.log('Error fetching data.')
+                        showError('Daten konnten nicht geladen werden. Bitte Verbindung prüfen.');
+                    }
                     return;
                 }
-                targetDays = [dayObj];
-                const [year, month, day] = (dayObj.date || '').split('-');
-                footerText.textContent = `Tag ${selectedDay} - ${day}.${month}.${year}`;
-            }
 
-            const allTalks = collectAndSortTalks(targetDays, !isSingleDay);
-
-            if (!allTalks.length) {
-                showError('Keine Fahrten gefunden.');
-                return;
-            }
-
-            departuresBody.innerHTML = '';
-            let currentDay = null;
-
-            allTalks.forEach((talk) => {
-                if (!isSingleDay && currentDay !== talk.dayIndex) {
-                    currentDay = talk.dayIndex;
-                    departuresBody.insertAdjacentHTML('beforeend', renderDayHeader(talk.dayIndex, talk.dayDate));
+                try {
+                    var res = await fetch(widgetScheduleUrl);
+                    dataWidget = await res.json();
+                } catch (e) {
+                    if (departuresBody.innerHTML.length < 500) {
+                        // Show Fetch error only if not loaded before
+                        console.log('Error fetching widget data.')
+                    }
                 }
-                departuresBody.insertAdjacentHTML('beforeend', renderRow(talk));
-            });
 
-            // Animate long titles with marquee effect
-            const scrollSpeed = 50; // pixels per second
-            document.querySelectorAll('.to_from').forEach((el) => {
-                const container = el.closest('td');
-                if (!container) return;
-
-                const link = el.querySelector('a');
-                if (!link) return;
-
-                const text = link.textContent;
-                const containerWidth = container.offsetWidth;
-
-                // Create temp span to measure text width
-                const tempSpan = document.createElement('span');
-                tempSpan.style.cssText = 'visibility:hidden;position:absolute;white-space:nowrap;font-size:26px;font-weight:bold;';
-                tempSpan.textContent = text;
-                document.body.appendChild(tempSpan);
-                const textWidth = tempSpan.offsetWidth;
-                document.body.removeChild(tempSpan);
-
-                if (textWidth > containerWidth) {
-                    const separator = '\u00A0\u00A0+++\u00A0\u00A0';
-                    const fullWidth = textWidth + 60; // approximate separator width
-                    const duration = (fullWidth / scrollSpeed) * 1000; // ms
-
-                    link.innerHTML = `<span class="marquee-wrapper animate" style="--scroll-duration:${duration}ms">${text}${separator}${text}${separator}</span>`;
+                try {
+                    var res = await fetch(freeSeatsUrl);
+                    dataSeats = await res.json();
+                } catch (e) {
+                        // Show Fetch error only if not loaded before
+                        console.log('Error fetching free seats data.')
                 }
-            });
 
+                // Render schedule
+                const days = data.schedule.conference.days;
+                let targetDays = days;
+
+                // set current Version in title
+                scheduleVersion.textContent = data.schedule.version;
+
+                if (isSingleDay) {
+                    const dayObj = days.find((d) => d.index === selectedDay);
+                    if (!dayObj) {
+                        showError(`Keine Inhalte für Tag ${selectedDay} gefunden.`);
+                        return;
+                    }
+                    targetDays = [dayObj];
+                    const [year, month, day] = (dayObj.date || '').split('-');
+                    footerText.textContent = `Tag ${selectedDay} - ${day}.${month}.${year}`;
+                }
+
+                const allTalks = collectAndSortTalks(targetDays, !isSingleDay);
+
+                if (!allTalks.length) {
+                    showError('Keine Fahrten gefunden.');
+                    return;
+                }
+
+                departuresBody.innerHTML = '';
+                let currentDay = null;
+
+                allTalks.forEach((talk) => {
+                    if (!isSingleDay && currentDay !== talk.dayIndex) {
+                        currentDay = talk.dayIndex;
+                        departuresBody.insertAdjacentHTML('beforeend', renderDayHeader(talk.dayIndex, talk.dayDate));
+                    }
+                    departuresBody.insertAdjacentHTML('beforeend', renderRow(talk));
+                });
+
+                // Animate long titles with marquee effect
+                const scrollSpeed = 50; // pixels per second
+                document.querySelectorAll('.to_from').forEach((el) => {
+                    const container = el.closest('td');
+                    if (!container) return;
+
+                    const link = el.querySelector('a');
+                    if (!link) return;
+
+                    const text = link.textContent;
+                    const textDeco = link.parentElement.style.cssText;
+                    const containerWidth = container.offsetWidth;
+
+                    // Create temp span to measure text width
+                    const tempSpan = document.createElement('span');
+                    tempSpan.style.cssText = 'visibility:hidden;position:absolute;white-space:nowrap;font-size:26px;font-weight:bold;';
+                    tempSpan.textContent = text;
+                    document.body.appendChild(tempSpan);
+                    const textWidth = tempSpan.offsetWidth;
+                    document.body.removeChild(tempSpan);
+
+                    if (textWidth > containerWidth) {
+                        const separator = '\u00A0\u00A0+++\u00A0\u00A0';
+                        const fullWidth = textWidth + 60; // approximate separator width
+                        const duration = (fullWidth / scrollSpeed) * 1000; // ms
+
+                        link.innerHTML = `<span class="marquee-wrapper animate" style="--scroll-duration:${duration}ms;${textDeco}">${text}${separator}${text}${separator}</span>`;
+                    }
+                });
+                console.log('Updated at ' + new Date())
+            };
+            updateSchedule();
+            setInterval(updateSchedule, 300000); // 5 Minutes Update
         })();
     </script>
 </body>
