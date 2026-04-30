@@ -5,20 +5,17 @@
  */
 window.FossgisFahrplanEventConfig = {
   scheduleUrl:
-    // "https://pretalx.com/fossgis2026/schedule/export/schedule.json",
-    'schedule.json',
+    'https://fossgis.mapwebbing.eu/event-api/api/v1/schedule',
 
   scheduleUrlPrint:
-    'schedulePrint.json',
+    'https://fossgis.mapwebbing.eu/event-api/api/v1/schedule-print',
 
   /** Pretalx Widget-JSON (Pausen); /v/latest/ liefert stets die aktuelle Version. */
   widgetScheduleUrl:
-    // "https://pretalx.com/fossgis2026/schedule/v/latest/widgets/schedule.json",
-    'widget.json',
+    'https://fossgis.mapwebbing.eu/event-api/api/v1/widget-schedule',
 
   freeSeatsUrl:
-    // 'https://fossgis.mapwebbing.eu/backend/api/v1/availability',
-    'availability.json',
+    'https://fossgis.mapwebbing.eu/event-api/api/v1/availability',
 
   trackMap: {
     "Grundlagen Open-Source-GIS und OpenStreetMap": "OSG",
@@ -49,7 +46,7 @@ window.FossgisFahrplanEventConfig = {
     if (roomName.startsWith("BoF1")) return "BoF1";
     if (roomName.startsWith("BoF2")) return "BoF2";
     if (roomName.startsWith("Bof3") || roomName.includes("Expert:innen"))
-    return "BoF3";
+      return "BoF3";
     if (roomName.startsWith("WS1")) return "WS1";
     if (roomName.startsWith("WS2")) return "WS2";
     if (roomName.startsWith("WS3")) return "WS3";
@@ -59,12 +56,12 @@ window.FossgisFahrplanEventConfig = {
     if (roomName.startsWith("OSM3")) return "OSM3";
     if (roomName.includes("Opening OSM")) return "OO";
     if (roomName.toLowerCase().includes("posterausstellung"))
-    return "Post";
+      return "Post";
     if (
-    roomName.includes("Foyer MH") ||
-    roomName.toLowerCase().includes("community sprint")
+      roomName.includes("Foyer MH") ||
+      roomName.toLowerCase().includes("community sprint")
     )
-    return "Foyer";
+      return "Foyer";
     if (roomName === "Mensa") return "Mensa";
     return "*";
   },
@@ -112,7 +109,7 @@ window.FossgisFahrplanEventConfig = {
 
   trainReplaceName: (talk) => {
     if (talk.roomName.toLowerCase().startsWith('bof')) {
-        return 'Sonderfahrt';
+      return 'Sonderfahrt';
     }
     return 'Ersatzzug';
   },

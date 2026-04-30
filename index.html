@@ -65,6 +65,14 @@
 
     <script>
         (async () => {
+            // DOM hooks
+            const departuresBody = document.getElementById('departures');
+            const currentTimeEl = document.getElementById('currentTime');
+            const footerText = document.getElementById('footerText');
+            const scheduleVersion = document.getElementById('scheduleVersion');
+            const departureTableEl = document.getElementById('departureTable');
+            const titleBarEl = document.querySelector('.titleBar');
+
             const showError = (msg) => {
                 departuresBody.innerHTML = `<tr><td class="cell_time" colspan="4">${msg}</td></tr>`;
             };
@@ -96,14 +104,31 @@
             const onlyTrackParam = params.get('only-track');
             const onlyRoomParam = params.get('only-room');
             const generateDelay = params.get('gen-delay');
+            /**
+             * Debugging Hilfe:
+             * - lokal (localhost oder 127.0.0.1): standardmaessig keine Filterung nach "bereits vorbei"
+             * - erzwingen: ?dev=1 (anzeigen) oder ?dev=0 (filtern)
+             */
+            const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            const devParam = params.get('dev'); // null, "0", "1", ...
+            const skipPastFilter = devParam === '1' ? true : devParam === '0' ? false : isLocalhost;
             const isSingleDay = onlyDayParam !== null;
             const selectedDay = parseInt(onlyDayParam ?? '1', 10);
 
-            // DOM hooks
-            const departuresBody = document.getElementById('departures');
-            const currentTimeEl = document.getElementById('currentTime');
-            const footerText = document.getElementById('footerText');
-            const scheduleVersion = document.getElementById('scheduleVersion');
+            const setStickyHeights = () => {
+                if (!titleBarEl || !departureTableEl) return;
+                const theadRow = departureTableEl.querySelector('thead tr');
+                if (!theadRow) return;
+                const root = document.documentElement;
+                root.style.setProperty('--titlebar-height', `${titleBarEl.offsetHeight}px`);
+                root.style.setProperty('--thead-height', `${theadRow.offsetHeight}px`);
+            };
+
+            let stickyResizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(stickyResizeTimer);
+                stickyResizeTimer = setTimeout(setStickyHeights, 120);
+            });
 
             // Update clock
             const updateClock = () => {
@@ -112,6 +137,7 @@
             };
             updateClock();
             setInterval(updateClock, 1000);
+            setStickyHeights();
 
             // Filter predicates
             const trackTarget = onlyTrackParam?.toLowerCase();
@@ -129,7 +155,7 @@
                     if (trackRaw !== trackTarget && trackCode !== trackTarget) return false;
                 }
                 if (roomTarget && !roomName.toLowerCase().match(new RegExp(roomTarget))) return false;
-                if (endTalkDate(talk.date, talk.duration) < new Date()) return false;
+                if (!skipPastFilter && endTalkDate(talk.date, talk.duration) < new Date()) return false;
 
                 return true;
             };
@@ -184,9 +210,13 @@
                 let roomClass = '';
                 let tripMessage = [];
 
-                if (new Date(talk.date) < new Date()) {
-                    // format current 
-                    roomClass = ` blink`;
+                {
+                    const now = new Date();
+                    const start = new Date(talk.date);
+                    const end = endTalkDate(talk.date, talk.duration);
+                    if (start < now && now < end) {
+                        roomClass = ` blink`;
+                    }
                 }
                 if (talk.canceled) {
                     tripMessage.push('Zugausfall')
@@ -255,8 +285,8 @@
                 const [year, month, day] = (date || '').split('-');
                 const dateStr = date ? `${day}.${month}.${year}` : '';
                 return `
-                <tr>
-                    <td class="cell_time" colspan="4" style="background-color: #FFFF00; color: #000000; font-weight: bold; font-size: 24px;">
+                <tr class="day-header-row">
+                    <td colspan="4">
                         Tag ${dayIndex} - ${dateStr}
                     </td>
                 </tr>`;
@@ -465,6 +495,7 @@
                         link.innerHTML = `<span class="marquee-wrapper animate" style="--scroll-duration:${duration}ms;${textDeco}">${text}${separator}${text}${separator}</span>`;
                     }
                 });
+                requestAnimationFrame(() => setStickyHeights());
                 console.log('Updated at ' + new Date())
             };
             updateSchedule();
