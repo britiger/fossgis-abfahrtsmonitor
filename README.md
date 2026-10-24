@@ -14,6 +14,9 @@ Open `index.html` directly in a browser. No build steps required.
 - `?only-track=<name>` - Filter by track (e.g., `SCI`, `Security`)
 - `?only-room=<room>` - Filter by room (substring match)
 - `?gen-delay=1` - Generate random delay for talks
+- `?dev=<1|0>` - force view(`1`) or filter(`0`) old talks, based on local urls (localhost and 127.0.0.1) `dev` is `1`
+- `?addDays=<days>` - Use old conference data, you can made a shift
+- `?dayIndexStart=<0|1>` - Set day numbering of first day (Default: 1)
 
 Parameters can be combined: `?only-day=1&only-track=SEC`
 
@@ -42,6 +45,6 @@ You can configure URLs, rooms and other functions in `config.js`. This configura
 | Config value/function | description |
 |-----------------------|-------------|
 | `scheduleUrl`         | URL to current schedule from pretalx, fetch live |
-| `scheduleUrlPrint`    | URL/File of printed schedule to calculate differences |
+| `scheduleUrlPrint`    | URL/File of printed schedule to calculate differences between to show cancaled |
 | `pretixFreeUrl`       | URL to API for free space in e.g. Workshops |
 | `widgetUrl`           | calculated from `scheduleUrl` or widget URL from pretalx |

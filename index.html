@@ -59,7 +59,7 @@
 
     <div id="additionalTextContainer">
         <div class="additionalText" id="footerText">
-            Chaos Communication Congress - 27.12.2025 bis 30.12.2025
+            FOSSGIS Konferenz - 09.03.2027 bis 13.03.2025
         </div>
     </div>
 
@@ -104,6 +104,8 @@
             const onlyTrackParam = params.get('only-track');
             const onlyRoomParam = params.get('only-room');
             const generateDelay = params.get('gen-delay');
+            const addDaysParm = parseFloat(params.get('addDays') ?? '0');
+            const dayIndexStart = parseInt(params.get('dayIndexStart') ?? '1');
             /**
              * Debugging Hilfe:
              * - lokal (localhost oder 127.0.0.1): standardmaessig keine Filterung nach "bereits vorbei"
@@ -145,7 +147,7 @@
             const endTalkDate = (date, duration) => {
                 const startDate = new Date(date);
                 const durationMinutes = toMinutes(duration)
-                const debugAddTime = 17*24*60*60000;
+                const debugAddTime = addDaysParm*24*60*60000;
                 return new Date(startDate.getTime() + durationMinutes*60000 + debugAddTime);
             };
             const passesFilters = (talk, roomName) => {
@@ -284,6 +286,7 @@
             const renderDayHeader = (dayIndex, date) => {
                 const [year, month, day] = (date || '').split('-');
                 const dateStr = date ? `${day}.${month}.${year}` : '';
+                dayIndex += (dayIndexStart - 1);
                 return `
                 <tr class="day-header-row">
                     <td colspan="4">
