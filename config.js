@@ -114,7 +114,7 @@ window.FossgisFahrplanEventConfig = {
   },
 
   trainReplaceName: (talk) => {
-    if (talk.roomName.toLowerCase().startsWith('bof')) {
+    if (talk.roomName.toLowerCase().startsWith('bof') || talk.roomName.toLowerCase().startsWith('comm')) {
       return 'Sonderfahrt';
     }
     return 'Ersatzzug';
