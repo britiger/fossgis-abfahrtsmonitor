@@ -88,10 +88,10 @@ window.FossgisFahrplanEventConfig = {
   redRoomsList: ["HS1", "HS2", "HS3", "HS4"],
 
   streamingUrlByRoom: {
-    HS1: "https://streaming.media.ccc.de/fossgis2026/hs1",
-    HS2: "https://streaming.media.ccc.de/fossgis2026/hs2",
-    HS3: "https://streaming.media.ccc.de/fossgis2026/hs3",
-    HS4: "https://streaming.media.ccc.de/fossgis2026/hs4",
+    HS1: "https://streaming.media.ccc.de/fossgis2027/hs1",
+    HS2: "https://streaming.media.ccc.de/fossgis2027/hs2",
+    HS3: "https://streaming.media.ccc.de/fossgis2027/hs3",
+    HS4: "https://streaming.media.ccc.de/fossgis2027/hs4",
     Comm1: "",
     Comm2: "",
     Comm3: "",

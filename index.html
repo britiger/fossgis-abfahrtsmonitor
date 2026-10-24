@@ -7,6 +7,7 @@
     <title>FOSSGIS Fahrplan - Bahnhofstafel</title>
     <meta name="author" content="Based on c3-fahrplan-druck by Anton P. Braun and Felix Divo">
     <link rel="stylesheet" href="style.css">
+    <script src="lucide.js"></script>
     <script src="config.js"></script>
 </head>
 
@@ -211,6 +212,7 @@
                 let cancelStyle = '';
                 let roomStyle = '';
                 let roomClass = '';
+                let doNotRecord = '';
                 let tripMessage = [];
 
                 {
@@ -267,11 +269,15 @@
                     delayMsg = `<span class="tripMessage">${tripMessage.join(' | ')}</span>`;
                 }
 
+                if (talk.do_not_record) {
+                    doNotRecord = '<i data-lucide="video-off" width="0.75em" height="0.75em"></i>';
+                }
+
                 return `
                 <tr>
                     <td class="cell_time">
                         <span class="time">${talk.start}</span>
-                        <span class="tripID">${trackCode} ${trainId}</span>
+                        <span class="tripID">${trackCode} ${trainId} ${doNotRecord}</span>
                     </td>
                     <td>
                         <span class="to_from" style="${cancelStyle}"><a href="${talk.url}" target="_blank">${talk.title}</a></span>
@@ -504,7 +510,8 @@
                     }
                 });
                 requestAnimationFrame(() => setStickyHeights());
-                console.log('Updated at ' + new Date())
+                console.log('Updated at ' + new Date());
+                if (window.lucide) window.lucide.createIcons();
             };
             updateSchedule();
             setInterval(updateSchedule, 300000); // 5 Minutes Update
