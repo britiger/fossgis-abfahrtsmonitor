@@ -20,7 +20,7 @@ window.FossgisFahrplanEventConfig = {
     'widget.json',
 
   freeSeatsUrl:
-    // 'https://fossgis.mapwebbing.eu/backend/api/v1/availability',
+    // 'https://fossgis.mapwebbing.eu/event-api/api/v1/availability',
     'availability.json',
 
   trackMap: {
@@ -44,15 +44,18 @@ window.FossgisFahrplanEventConfig = {
   },
 
   abbreviateRoom: (roomName) => {
-    // FOSSGIS 2026 Räume
+    // FOSSGIS 2027 Räume
     if (roomName.startsWith("HS1")) return "HS1";
     if (roomName.startsWith("HS2")) return "HS2";
     if (roomName.startsWith("HS3")) return "HS3";
     if (roomName.startsWith("HS4")) return "HS4";
-    if (roomName.startsWith("BoF1")) return "BoF1";
-    if (roomName.startsWith("BoF2")) return "BoF2";
+    if (roomName.startsWith("BoF1")) return "Comm1";
+    if (roomName.startsWith("BoF2")) return "Comm2";
     if (roomName.startsWith("Bof3") || roomName.includes("Expert:innen"))
-      return "BoF3";
+      return "Comm3";
+    if (roomName.startsWith("Comm1")) return "Comm1";
+    if (roomName.startsWith("Comm2")) return "Comm2";
+    if (roomName.startsWith("Comm3")) return "Comm3";
     if (roomName.startsWith("WS1")) return "WS1";
     if (roomName.startsWith("WS2")) return "WS2";
     if (roomName.startsWith("WS3")) return "WS3";
@@ -63,12 +66,8 @@ window.FossgisFahrplanEventConfig = {
     if (roomName.includes("Opening OSM")) return "OO";
     if (roomName.toLowerCase().includes("posterausstellung"))
       return "Post";
-    if (
-      roomName.includes("Foyer MH") ||
-      roomName.toLowerCase().includes("community sprint")
-    )
-      return "Foyer";
-    if (roomName === "Mensa") return "Mensa";
+    if (roomName.toLowerCase().includes("community sprint"))
+      return "Math";
     return "*";
   },
 
@@ -91,9 +90,9 @@ window.FossgisFahrplanEventConfig = {
     HS2: "https://streaming.media.ccc.de/fossgis2026/hs2",
     HS3: "https://streaming.media.ccc.de/fossgis2026/hs3",
     HS4: "https://streaming.media.ccc.de/fossgis2026/hs4",
-    BoF1: "",
-    BoF2: "",
-    BoF3: "",
+    Comm1: "",
+    Comm2: "",
+    Comm3: "",
     WS1: "",
     WS2: "",
     WS3: "",
