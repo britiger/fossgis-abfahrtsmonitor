@@ -5,17 +5,23 @@
  */
 window.FossgisFahrplanEventConfig = {
   scheduleUrl:
-    'https://fossgis.mapwebbing.eu/event-api/api/v1/schedule',
+    // "https://pretalx.com/fossgis2026/schedule/export/schedule.json",
+    // 'https://fossgis.mapwebbing.eu/event-api/api/v1/schedule',
+    'schedule.json',
 
   scheduleUrlPrint:
-    'https://fossgis.mapwebbing.eu/event-api/api/v1/schedule-print',
+    // 'https://fossgis.mapwebbing.eu/event-api/api/v1/schedule-print',
+    'schedulePrint.json',
 
   /** Pretalx Widget-JSON (Pausen); /v/latest/ liefert stets die aktuelle Version. */
   widgetScheduleUrl:
-    'https://fossgis.mapwebbing.eu/event-api/api/v1/widget-schedule',
+    // 'https://fossgis.mapwebbing.eu/event-api/api/v1/widget-schedule',
+    // "https://pretalx.com/fossgis2026/schedule/v/latest/widgets/schedule.json",
+    'widget.json',
 
   freeSeatsUrl:
-    'https://fossgis.mapwebbing.eu/event-api/api/v1/availability',
+    // 'https://fossgis.mapwebbing.eu/backend/api/v1/availability',
+    'availability.json',
 
   trackMap: {
     "Grundlagen Open-Source-GIS und OpenStreetMap": "OSG",
