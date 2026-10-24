@@ -206,6 +206,7 @@
                 const roomAbbrev = abbreviateRoom(talk.roomName);
                 const duration = toMinutes(talk.duration);
                 const endTime = toHours(toMinutes(talk.start) + duration);
+                let talkRoomName = talk.roomName || '-';
                 let delayMsg = getRandomDelay();
                 let cancelStyle = '';
                 let roomStyle = '';
@@ -258,6 +259,9 @@
                         tripMessage.push('Unbekannte Auslastung');
                     }
                 }
+                if(talk.title.includes(eventCfg.photoName)) {
+                    talkRoomName = eventCfg.photoLocation;
+                }
 
                 if (tripMessage.length > 0) {
                     delayMsg = `<span class="tripMessage">${tripMessage.join(' | ')}</span>`;
@@ -275,7 +279,7 @@
                     </td>
                     <td>
                         <span class="path">${speaker}</span>
-                        <span class="tripMessage">${talk.roomName} | bis ${endTime}</span>
+                        <span class="tripMessage">${talkRoomName} | bis ${endTime}</span>
                     </td>
                     <td>
                         <span class="platform${roomClass}" style="${roomStyle}">${roomAbbrev}</span>

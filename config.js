@@ -82,6 +82,8 @@ window.FossgisFahrplanEventConfig = {
   breakRoomName: "Alle Räume",
   breakPrefix: "PAU",
   breakTitlePrefix: "Betriebsunterbrechung wegen",
+  photoName: "Gruppenfoto",
+  photoLocation: "vor dem audiMAX",
 
   redRoomsList: ["HS1", "HS2", "HS3", "HS4"],
 
